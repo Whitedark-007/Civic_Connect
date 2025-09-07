@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicConnect - Smart Issue Reporting Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Leaflet Routing Machine for Directions -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>CivicConnect</h1>
+                    <span class="tagline">Smart Civic Issue Reporting with Navigation</span>
+                </div>
+                <nav class="main-nav">
+                    <div class="location-indicator" id="locationIndicator">
+                        <span class="location-icon">Location:</span>
+                        <span id="currentLocationText">Detecting location...</span>
+                    </div>
+                    <button id="viewToggle" class="btn btn--secondary">Switch to Admin</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main id="citizenInterface" class="citizen-interface">
+        <section id="landing" class="landing-section">
+            <div class="container">
+                <div class="hero">
+                    <h1>Report Community Issues</h1>
+                    <p>Advanced civic issue reporting with GPS navigation, interactive maps, and real-time tracking for efficient municipal services.</p>
+                    <div class="hero-actions">
+                        <button id="reportIssueBtn" class="btn btn--primary btn--lg">Report an Issue</button>
+                        <button id="viewMapBtn" class="btn btn--outline btn--lg">View Community Map</button>
+                    </div>
+                </div>
+
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <h3 id="totalIssues">3</h3>
+                        <p>Total Reports</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="resolvedIssues">1</h3>
+                        <p>Issues Resolved</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>1.8 days</h3>
+                        <p>Avg Response Time</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="reportIssue" class="report-section hidden">
+            <div class="container">
+                <div class="form-container">
+                    <div class="form-header">
+                        <h2>Report a Civic Issue</h2>
+                        <button id="backToLanding" class="btn btn--ghost">Back</button>
+                    </div>
+
+                    <div class="location-detection">
+                        <h3>Location Detection</h3>
+                        <div class="location-status">
+                            <div class="status-item">
+                                <span class="status-label">Status:</span>
+                                <span id="gpsStatus" class="status status--info">Ready</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Accuracy:</span>
+                                <span id="gpsAccuracy">Unknown</span>
+                            </div>
+                        </div>
+
+                        <div class="location-controls">
+                            <button id="detectLocationBtn" class="btn btn--primary">
+                                Detect My Location
+                            </button>
+                            <button id="refreshLocationBtn" class="btn btn--secondary" disabled>
+                                Refresh Location
+                            </button>
+                        </div>
+
+                        <div id="coordinatesDisplay" class="coordinates-display hidden">
+                            <h4>Current Location Details</h4>
+                            <div class="location-info-grid">
+                                <div class="primary-info">
+                                    <div class="detected-address-section">
+                                        <label>Detected Address:</label>
+                                        <div id="detectedFullAddress" class="full-address">
+                                            <div class="address-line">Detecting your location...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="secondary-info">
+                                    <div class="coordinates-grid">
+                                        <div class="coordinate-item">
+                                            <label>Latitude:</label>
+                                            <span id="currentLat" class="coordinate-value">Not detected</span>
+                                        </div>
+                                        <div class="coordinate-item">
+                                            <label>Longitude:</label>
+                                            <span id="currentLng" class="coordinate-value">Not detected</span>
+                                        </div>
+                                        <div class="coordinate-item">
+                                            <label>Detection Time:</label>
+                                            <span id="detectionTime" class="time-value">Not detected</span>
+                                        </div>
+                                        <div class="coordinate-item">
+                                            <label>GPS Accuracy:</label>
+                                            <span id="locationAccuracy" class="accuracy-value">Unknown</span>
+                                        </div>
+                                        <div class="coordinate-item">
+                                            <label>Detection Method:</label>
+                                            <span id="detectionMethod" class="method-value">Unknown</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mini Map Preview -->
+                            <div class="map-preview-section">
+                                <h4>Location Preview</h4>
+                                <div id="reportMapPreview" class="map-preview"></div>
+                            </div>
+                        </div>
+
+                        <div class="manual-location">
+                            <h4>Manual Location (Optional)</h4>
+                            <div class="manual-inputs">
+                                <div class="input-group">
+                                    <label for="manualLat">Latitude:</label>
+                                    <input type="number" id="manualLat" step="0.000001" min="-90" max="90" placeholder="e.g., 13.082700">
+                                </div>
+                                <div class="input-group">
+                                    <label for="manualLng">Longitude:</label>
+                                    <input type="number" id="manualLng" step="0.000001" min="-180" max="180" placeholder="e.g., 80.270700">
+                                </div>
+                                <button id="useManualLocation" class="btn btn--outline">Use Manual Location</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="issueForm" class="issue-form">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="issueType">Issue Type *</label>
+                                <select id="issueType" required>
+                                    <option value="">Select issue type</option>
+                                    <option value="Potholes">Potholes</option>
+                                    <option value="Street Lights">Street Lights</option>
+                                    <option value="Garbage/Waste">Garbage/Waste</option>
+                                    <option value="Water Issues">Water Issues</option>
+                                    <option value="Traffic Signals">Traffic Signals</option>
+                                    <option value="Parks & Recreation">Parks & Recreation</option>
+                                    <option value="Road Damage">Road Damage</option>
+                                    <option value="Public Safety">Public Safety</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group">
+                                <label for="issuePriority">Priority *</label>
+                                <select id="issuePriority" required>
+                                    <option value="">Select priority</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Emergency">Emergency</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="issueDescription">Description *</label>
+                            <textarea id="issueDescription" rows="4" placeholder="Describe the issue in detail..." required></textarea>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="issuePhoto">Photo *</label>
+                            <input type="file" id="issuePhoto" accept="image/*" required>
+                            <div class="photo-requirements">
+                                <p><strong>Photo is mandatory:</strong> Upload a clear photo to help authorities resolve issues quickly.</p>
+                            </div>
+                            <div id="photoPreview" class="photo-preview hidden"></div>
+                            <div id="photoError" class="photo-error hidden">
+                                <p>Please upload a photo to proceed with your report.</p>
+                            </div>
+                        </div>
+
+                        <div class="location-summary" id="locationSummary" style="display:none;">
+                            <h4>Report Summary</h4>
+                            <div class="summary-content">
+                                <div class="summary-main">
+                                    <div class="summary-address">
+                                        <strong>Location Address:</strong>
+                                        <div id="summaryFullAddress" class="summary-address-text">Not detected</div>
+                                    </div>
+                                </div>
+                                <div class="summary-details">
+                                    <div class="summary-grid">
+                                        <div class="summary-item">
+                                            <strong>Coordinates:</strong>
+                                            <span id="summaryCoordinates">Not available</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <strong>Time of Detection:</strong>
+                                            <span id="summaryTime">Not available</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <strong>Location Method:</strong>
+                                            <span id="summaryMethod">Not available</span>
+                                        </div>
+                                        <div class="summary-item">
+                                            <strong>GPS Accuracy:</strong>
+                                            <span id="summaryAccuracy">Not available</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" id="submitIssue" class="btn btn--primary btn--lg" disabled>
+                                Submit Issue Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section id="trackIssues" class="track-section hidden">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Track Your Issues</h2>
+                    <button id="backToLandingFromTrack" class="btn btn--ghost">Back</button>
+                </div>
+
+                <div id="userIssuesList" class="issues-list">
+                    <p class="no-issues">No issues reported yet. Submit your first report!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="communityMap" class="map-section hidden">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Community Issues Map</h2>
+                    <button id="backToLandingFromMap" class="btn btn--ghost">Back</button>
+                </div>
+
+                <div class="map-container">
+                    <div id="communityMapContainer" class="interactive-map"></div>
+                    <div class="map-controls">
+                        <div class="map-actions">
+                            <button id="refreshMapBtn" class="btn btn--primary">Refresh Map</button>
+                            <button id="centerMapBtn" class="btn btn--outline">Center on Me</button>
+                        </div>
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <span class="legend-marker red"></span>
+                                <span>Emergency</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker orange"></span>
+                                <span>High Priority</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker yellow"></span>
+                                <span>Medium Priority</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker green"></span>
+                                <span>Low Priority</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <main id="adminInterface" class="admin-interface hidden">
+        <section id="adminDashboard" class="admin-section">
+            <div class="container">
+                <div class="admin-header">
+                    <h2>Municipal Admin Dashboard</h2>
+                    <div class="admin-nav">
+                        <button id="dashboardTab" class="tab-btn active">Dashboard</button>
+                        <button id="issuesTab" class="tab-btn">Issues</button>
+                        <button id="fieldMapTab" class="tab-btn">Field Map</button>
+                        <button id="analyticsTab" class="tab-btn">Analytics</button>
+                    </div>
+                </div>
+
+                <div id="dashboardContent" class="admin-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                <span id="adminTotalIssues">3</span>
+                            </div>
+                            <div class="metric-label">Total Issues</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                <span id="adminPendingIssues">1</span>
+                            </div>
+                            <div class="metric-label">Pending</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                <span id="adminInProgressIssues">1</span>
+                            </div>
+                            <div class="metric-label">In Progress</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                <span id="adminResolvedIssues">1</span>
+                            </div>
+                            <div class="metric-label">Resolved</div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h3>Issue Types Distribution</h3>
+                            <canvas id="issueTypesChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Status Overview</h3>
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="issuesContent" class="admin-content hidden">
+                    <div class="issues-header">
+                        <h3>Issue Management</h3>
+                        <div class="filters">
+                            <select id="statusFilter">
+                                <option value="">All Statuses</option>
+                                <option value="Submitted">Submitted</option>
+                                <option value="Acknowledged">Acknowledged</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                            <select id="priorityFilter">
+                                <option value="">All Priorities</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="adminIssuesList" class="admin-issues-list">
+                        <p class="no-issues">Loading issues...</p>
+                    </div>
+                </div>
+
+                <div id="fieldMapContent" class="admin-content hidden">
+                    <div class="field-map-header">
+                        <h3>Field Navigation Map</h3>
+                        <div class="field-controls">
+                            <button id="getMyLocationBtn" class="btn btn--primary">Get My Location</button>
+                            <button id="showAllIssuesBtn" class="btn btn--secondary">Show All Issues</button>
+                            <select id="priorityMapFilter" class="map-filter">
+                                <option value="">All Priorities</option>
+                                <option value="Emergency">Emergency Only</option>
+                                <option value="High">High Priority</option>
+                                <option value="Medium">Medium Priority</option>
+                                <option value="Low">Low Priority</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="fieldMapContainer" class="field-map"></div>
+
+                    <div class="navigation-panel">
+                        <div class="navigation-info" id="navigationInfo">
+                            <p>Click on any issue marker to get directions</p>
+                        </div>
+                        <div class="field-worker-tools">
+                            <button id="nearestIssueBtn" class="btn btn--primary">Find Nearest Issue</button>
+                            <button id="routeOptimizeBtn" class="btn btn--secondary">Optimize Route</button>
+                            <button id="clearRouteBtn" class="btn btn--outline">Clear Route</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="analyticsContent" class="admin-content hidden">
+                    <div class="analytics-grid">
+                        <div class="chart-container">
+                            <h3>Monthly Trends</h3>
+                            <canvas id="trendsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Department Performance</h3>
+                            <canvas id="departmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Success!</h3>
+                <button id="closeSuccessModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="successMessage">Your issue has been reported successfully!</p>
+                <div id="issueDetails" class="issue-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Error</h3>
+                <button id="closeErrorModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage">An error occurred.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal hidden">
+        <div class="modal-content modal-image-content">
+            <div class="modal-header">
+                <h3 id="imageModalTitle">Issue Photo</h3>
+                <button id="closeImageModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body modal-image-body">
+                <div class="image-container">
+                    <img id="modalImage" src="" alt="Issue photo" class="modal-image">
+                </div>
+                <div class="image-info">
+                    <p id="imageInfo">Photo information</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction Modal -->
+    <div id="directionModal" class="modal hidden">
+        <div class="modal-content modal-direction-content">
+            <div class="modal-header">
+                <h3>Navigation to Issue</h3>
+                <button id="closeDirectionModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="directionDetails" class="direction-details">
+                    <p id="directionSummary">Route information will appear here</p>
+                </div>
+                <div class="direction-actions">
+                    <button id="openInMapsBtn" class="btn btn--primary">Open in Maps App</button>
+                    <button id="startNavigationBtn" class="btn btn--secondary">Start Navigation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
